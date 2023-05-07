@@ -3,7 +3,7 @@ name: deploy
 on:
   push:
     branches:
-      - "master"
+      - "main"
 env:
   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
   RELEASE_NAME: main
