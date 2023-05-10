@@ -1,168 +1,58 @@
-name: deploy
+name: CI-‌Frontend-test
 
 on:
   push:
-    branches:
-      - "main"
+    branches: main
 env:
-  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-  RELEASE_NAME: main
-  RELEASE_NAMESPACE: test-dev
-  RELEASE_DOMAIN: test.com
-  NEXT_RELEASE_DOMAIN: test.com
+ # DOCKER_REGISTRY: 
+ # DOCKER_REPOSITORY: 
+  image_name: frontend
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Lint Helm
-        uses: WyriHaximus/github-action-helm3@v3
-        with:
-          exec: helm lint .ci/chart
   build:
-    needs: [lint]
-    runs-on: ubuntu-latest
+    name: Building and Pushing the Image
+    runs-on: self-hosted
+    #runs-on: ubuntu-latest
+
     steps:
+  #    - name: Set up QEMU
+  #      uses: docker/setup-qemu-action@v2
 
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: 'true'
-
-      - name: Lowecase the repo name
-        run: |
-          echo "REPOSITORY_NAME=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
-
-      - name: Declare short commit id
-        id: vars
-        shell: bash
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
-      - name: "Set IMG_NAME variable"
-        run: echo 'IMG_NAME=ghcr.io/${{ env.REPOSITORY_NAME }}' >>$GITHUB_ENV
-
-      - name: "Set IMG_TAG variable"
-        run: echo 'IMG_TAG=${{ env.BRANCH_NAME }}-${{ steps.vars.outputs.sha_short }}' >>$GITHUB_ENV
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+  #    - uses: actions/checkout@v2
+  #      with:
+  #        submodules: recursive
+  #        token: ${{ secrets.GIT_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: login to ghcr.io
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ secrets.GHCR_USER }}
-          password: ${{ secrets.GHCR_TOKEN }}
+   #   - name: Login to DockerHub
+   #     uses: docker/login-action@v2
+   #    with:
+   #       username: ${{ secrets.DOCKERHUB_USERNAME }}
+   #       password: ${{ secrets.DOCKERHUB_TOKEN }}
+   #       registry: registry.enginedevops.com
 
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v3
         with:
           context: .
-          platforms: linux/amd64
           push: true
-          tags: ${{ env.IMG_NAME }}:${{ env.IMG_TAG }}
+          build-args: |
+          #  GIT_TOKEN=${{ secrets.GIT_TOKEN }}
+          tags: enginedevops/frontend_dev:${{ github.sha }}
 
-  helm:
-    needs: [build]
-    runs-on: 'ubuntu-latest'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'true'
-
-      - name: Lowecase the repo name
+      - name: Update Version
         run: |
-          echo "REPOSITORY_NAME=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+          git config --global user.email "slaila.hosseini@gmail.com"
+          git config --global user.name "leylahosseini"
+          git clone https://${{ secrets.GIT_TOKEN }}@github.com/leylahosseini/test-argocd.git
+          cd test-argocd/app
 
-      - name: Declare short commit id
-        id: vars
-        shell: bash
-        run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          tag=$(cat ./dev.values.yaml | grep frontend_image | awk -F":" '{print $3}') 
+          sed -i "s/$tag/${{ github.sha }}/" ./values-dev.yaml
 
-      - name: "Set IMG_NAME variable"
-        run: echo 'IMG_NAME=ghcr.io/${{ env.REPOSITORY_NAME }}' >>$GITHUB_ENV
 
-      - name: "Set IMG_TAG variable"
-        run: echo 'IMG_TAG=${{ env.BRANCH_NAME }}-${{ steps.vars.outputs.sha_short }}' >>$GITHUB_ENV
-
-      - name: "Set RELEASE_DOMAIN to next if branch is next"
-        if: env.BRANCH_NAME == 'next'
-        run: echo 'RELEASE_DOMAIN=${{ env.NEXT_RELEASE_DOMAIN }}' >>$GITHUB_ENV
-
-      - name: "Set RELEASE_NAME if to next branch is next"
-        if: env.BRANCH_NAME == 'next'
-        run: echo 'RELEASE_NAME=next-${{ env.RELEASE_NAME }}' >>$GITHUB_ENV
-
-      - name: Run Helm and Deploy on Main
-        uses: WyriHaximus/github-action-helm3@v3
-        if: env.BRANCH_NAME == 'master'
-        with:
-          exec: |
-            helm upgrade --install \
-              "${{ env.RELEASE_NAME }}.${{ env.BRANCH_NAME }}" \
-              --namespace ${{ env.RELEASE_NAMESPACE }} \
-              --set name="${{ env.RELEASE_NAME }}" \
-              --set domainName="${{ env.RELEASE_DOMAIN }}" \
-              --set image.repository="${{ env.IMG_NAME }}" \
-              --set image.tag="${{ env.IMG_TAG }}" \
-              --set tls.enabled="true" \
-              --set tls.clusterIssuer="cf-letsencrypt" \
-              --set tls.secretName="${{ env.BRANCH_NAME }}-${{ env.RELEASE_NAME }}-net-tls" \
-              --set app.debug="${{ secrets.APP_DEBUG }}" \
-              --set app.env="${{ secrets.APP_ENV }}" \
-              --set app.key="${{ secrets.APP_KEY }}" \
-              --set app.url="${{ secrets.APP_URL }}" \
-              --set app.db.connection="${{ secrets.DB_CONNECTION }}" \
-              --set app.db.database="${{ secrets.DB_DATABASE }}" \
-              --set app.db.host="${{ secrets.DB_HOST }}" \
-              --set app.db.port="${{ secrets.DB_PORT }}" \
-              --set app.db.user="${{ secrets.DB_USER }}" \
-              --set app.db.pass="${{ secrets.DB_PASS }}" \
-              --set app.jwt.secret="${{ secrets.APP_JWT_SECRET }}" \
-              --set app.segment_api_key="${{ secrets.SEGMENT_API_KEY }}" \
-              --set app.sendgrid_api_key="${{ secrets.SENDGRID_API_KEY }}" \
-              --create-namespace \
-              --atomic \
-              .ci/chart
-          kubeconfig: '${{ secrets.KUBECONFIG }}'
-
-      - name: Run Helm and Deploy on Next
-        uses: WyriHaximus/github-action-helm3@v3
-        if: env.BRANCH_NAME == 'next'
-        with:
-          exec: |
-            helm upgrade --install \
-              "${{ env.RELEASE_NAME }}.${{ env.BRANCH_NAME }}" \
-              --namespace ${{ env.RELEASE_NAMESPACE }} \
-              --set name="${{ env.RELEASE_NAME }}" \
-              --set domainName="${{ env.RELEASE_DOMAIN }}" \
-              --set image.repository="${{ env.IMG_NAME }}" \
-              --set image.tag="${{ env.IMG_TAG }}" \
-              --set tls.enabled="true" \
-              --set tls.clusterIssuer="cf-letsencrypt" \
-              --set tls.secretName="${{ env.BRANCH_NAME }}-${{ env.RELEASE_NAME }}-net-tls" \
-              --set app.debug="${{ secrets.NEXT_APP_DEBUG }}" \
-              --set app.env="${{ secrets.NEXT_APP_ENV }}" \
-              --set app.key="${{ secrets.NEXT_APP_KEY }}" \
-              --set app.url="${{ secrets.NEXT_APP_URL }}" \
-              --set app.db.connection="${{ secrets.NEXT_DB_CONNECTION }}" \
-              --set app.db.database="${{ secrets.NEXT_DB_DATABASE }}" \
-              --set app.db.host="${{ secrets.NEXT_DB_HOST }}" \
-              --set app.db.port="${{ secrets.NEXT_DB_PORT }}" \
-              --set app.db.user="${{ secrets.NEXT_DB_USER }}" \
-              --set app.db.pass="${{ secrets.NEXT_DB_PASS }}" \
-              --set app.jwt.secret="${{ secrets.NEXT_APP_JWT_SECRET }}" \
-              --set app.segment_api_key="${{ secrets.SEGMENT_API_KEY }}" \
-              --set app.sendgrid_api_key="${{ secrets.SENDGRID_API_KEY }}" \
-              --create-namespace \
-              --atomic \
-              .ci/chart
-          kubeconfig: '${{ secrets.KUBECONFIG }}'
+          git add .
+          git commit -m "enginedevops/frontend-dev/${{ github.sha }}"
+          git push
