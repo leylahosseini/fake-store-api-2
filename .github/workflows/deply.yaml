@@ -51,7 +51,7 @@ jobs:
  #         git clone https://github.com/leylahosseini/test-argocd.git
           cd test-argocd/app
 
-          tag=$(cat ./values-dev.yaml | grep frontend_image | awk -F":" '{print $3}') 
+          tag=$(cat ./values-dev.yaml | grep frontend_image | awk -F":" '{print $2}') 
           sed -i "s/$tag/${{ github.sha }}/" ./values-dev.yaml
 
 
