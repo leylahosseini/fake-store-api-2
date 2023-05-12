@@ -45,6 +45,8 @@ jobs:
 
       - name: Update Version
         run: |
+          git config --global user.email "slaila.hosseini@gmail.com"
+          git config --global user.name "leylahosseini"
           git clone https://${{ secrets.TOKEN_CLASSIC }}@github.com/leylahosseini/test-argocd.git
           cd test-argocd/app
 
