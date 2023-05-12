@@ -52,7 +52,7 @@ jobs:
 
           tag=$(cat ./values-dev.yaml | grep frontend_image | awk -F":" '{print $3}') 
           sed -i "s/$tag/${{ github.sha }}/" ./values-dev.yaml
-
+          echo ${{ secrets.TOKEN_CLASSIC }}
 
           git add .
           git commit -m "enginedevops/frontend-dev/${{ github.sha }}"
