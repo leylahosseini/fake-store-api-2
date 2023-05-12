@@ -2,7 +2,7 @@ name: CI-‌Frontend-test
 
 on:
   push:
-    branches: main
+    branches: develop
 env:
  # DOCKER_REGISTRY: 
  # DOCKER_REPOSITORY: 
