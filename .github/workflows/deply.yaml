@@ -44,7 +44,7 @@ jobs:
           build-args: |
 #            GIT_TOKEN=${{ secrets.TOKEN_CLASSIC }}
 #          tags: ghcr.io/leylahosseini/frontend_dev:${{ github.sha }}
-          tags: hub.docker.com/engidevops/frontend_dev:${{ github.sha }}       
+          tags: engidevops/frontend_dev:${{ github.sha }}       
    
       - name: Update Version
         run: |
