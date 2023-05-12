@@ -53,7 +53,7 @@ jobs:
           git clone https://${{ secrets.TOKEN_CLASSIC }}@github.com/leylahosseini/test-argocd.git
           cd test-argocd/app
 
-          tag=$(grep frontend_image values-dev.yaml| awk -F":" '{print $3}') 
+          tag=$(grep frontend_image values-dev.yaml| awk -F ":" '{print $3}') 
           sed -i "s/$tag/${{ github.sha }}/" ./values-dev.yaml
           
           git add .
