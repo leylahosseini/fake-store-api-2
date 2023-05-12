@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.TOKEN_CLASSIC }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -31,7 +31,7 @@ jobs:
         with:
    #       username: ${{ secrets.DOCKERHUB_USERNAME }}
           username: leylahosseini
-          password: ${{ secrets.TOKEN }}
+          password: ${{ secrets.TOKEN_CLASSIC }}
           registry: ghcr.io/leylahosseini/
 
       - name: Build and push
@@ -40,14 +40,14 @@ jobs:
           context: .
           push: true
           build-args: |
-            GIT_TOKEN=${{ secrets.TOKEN }}
+            GIT_TOKEN=${{ secrets.TOKEN_CLASSIC }}
           tags: ghcr.io/leylahosseini/frontend_dev:${{ github.sha }}
 
       - name: Update Version
         run: |
           git config --global user.email "slaila.hosseini@gmail.com"
           git config --global user.name "leylahosseini"
-          git clone https://${{ secrets.TOKEN }}@github.com/leylahosseini/test-argocd.git
+          git clone https://${{ secrets.TOKEN_CLASSIC }}@github.com/leylahosseini/test-argocd.git
           git clone https://github.com/leylahosseini/test-argocd.git
           cd test-argocd/app
 
